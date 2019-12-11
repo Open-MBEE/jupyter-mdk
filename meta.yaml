@@ -1,0 +1,41 @@
+{% set name = "mmscontents" %}
+{% set version = "0.0.1" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+source:
+  path: ./
+  # url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  # sha256: 6855d99218ed7e219e37d6cb6628443ac3abeb1921c16e0f778b1aee3e625290
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . "
+
+requirements:
+  host:
+    - python
+    - pip
+    - urllib3 >=1.15
+    - six >=1.10
+    - certifi
+    - python-dateutil
+    - notebook
+  run:
+    - python
+    - urllib3 >=1.15
+    - six >=1.10
+    - certifi
+    - python-dateutil
+    - notebook
+
+about:
+  home: The package home page
+  license: UNKNOWN
+  license_family: OTHER
+  license_file: ''
+  summary: ''
+  description: ''
+  doc_url: ''
+  dev_url: ''
