@@ -1,19 +1,34 @@
 import datetime
 import mimetypes
+import nbformat
 
-from nbformat import reads
 from notebook.services.contents.manager import ContentsManager
+from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
+
 from tornado.web import HTTPError
 
-from mmscontents.service import get_notebooks
+from mmscontents.service import get_notebooks, save_notebook, get_mms_token
+from traitlets import Unicode
 
 DUMMY_CREATED_DATE = datetime.datetime.fromtimestamp(86400)
 NBFORMAT_VERSION = 4
 
 
 class MMSContentsManager(ContentsManager):
+
+    mms_url = Unicode("https://mms.openmbee.org", help="MMS endpoint").tag(config=True, env="JPYNB_MMS_URL")
+    mms_project = Unicode("a", help="MMS project id").tag(config=True, env="JPYNB_MMS_PROJECT_ID")
+    mms_username = Unicode("dummy", help="MMS username").tag(config=True, env="JPNYB_MMS_USERNAME")
+    mms_password = Unicode("dummy", help="MMS password").tag(config=True, env="JPNYB_MMS_PASSWORD")
+    _mms_token = ""
+    
+    def __init__(self, *args, **kwargs):
+        super(MMSContentsManager, self).__init__(*args, **kwargs)
+        self._mms_token = get_mms_token(self.mms_url, self.mms_username, self.mms_password)
+
     def dir_exists(self, path):
-        if path == '':
+        print('?dir exists ' + path)
+        if path == '' or path == '/':
             return True
         return False
 
@@ -21,11 +36,14 @@ class MMSContentsManager(ContentsManager):
         return False
 
     def file_exists(self, path=''):
-        if path == '':
+        print('?file exists ' + path)
+        if path == '' or path == '/':
             return False
-        return path in get_notebooks()
+        id = path.rsplit('/', 1)[-1].split('.')[0]
+        return id in get_notebooks(self.mms_url, self.mms_project, self._mms_token)
 
     def get(self, path, content=True, type=None, format=None):
+        print('?get ' + path + ' ' + str(content) + ' ' + str(type) + ' ' + str(format))
         if type is None:
             type = self.guess_type(path)
         try:
@@ -48,24 +66,46 @@ class MMSContentsManager(ContentsManager):
         return self._file_model_from_path(path, content=content, format=format)
 
     def _directory_model_from_path(self, path, content=False):
+        print('?dir model from path ' + path + ' ' + str(content))
         model = base_directory_model(path)
         if content:
             if not self.dir_exists(path):
                 self.no_such_entity(path)
+        if path == '' or path == '/':
+            content = []
+            for i in get_notebooks(self.mms_url, self.mms_project, self._mms_token):
+                nmodel = base_model('/' + i + '.ipynb')
+                nmodel.update(
+                    type="notebook",
+                    format="json",
+                    last_modified=DUMMY_CREATED_DATE,
+                    created=DUMMY_CREATED_DATE
+                )
+                content.append(nmodel)
+            model.update(content=content)
         return model
 
     def _notebook_model_from_path(self, path, content=False, format=None):
+        print('?notebook from path ' + path + ' ' + str(content))
         model = base_model(path)
-        model['type'] = 'notebook'
+        model.update(
+            last_modified=DUMMY_CREATED_DATE,
+            created=DUMMY_CREATED_DATE,
+            type='notebook'
+        )
         if content:
             if not self.file_exists(path):
                 self.no_such_entity(path)
-            file_content = get_notebooks()[path]
-            nb_content = reads(file_content, as_version=NBFORMAT_VERSION)
-            self.mark_trusted_cells(nb_content, path)
-            model['format'] = 'json'
-            model['content'] = nb_content
-            self.validate_notebook_model(model)
+            id = path.rsplit('/', 1)[-1].split('.')[0]
+            #file_content = json.dumps(get_notebooks(mms_url, mms_project)[id])
+            #nb_content = nb_format.reads(file_content, as_version=nbformat.NO_CONVERT)
+            #self.mark_trusted_cells(nb_content, path)
+            nb_content = nbformat.from_dict(move_id_to_metadata(get_notebooks(self.mms_url, self.mms_project, self._mms_token)[id]))
+            model.update(
+                content=nb_content,
+                format='json'
+            )
+            #self.validate_notebook_model(model)
         return model
 
     def _file_model_from_path(self, path, content=False, format=None):
@@ -74,7 +114,7 @@ class MMSContentsManager(ContentsManager):
         if content:
             if not self.file_exists(path):
                 self.no_such_entity(path)
-            file_content = get_notebooks()[path]
+            file_content = get_notebooks(self.mms_url, self.mms_project, self._mms_token)[path]
             model["format"] = format or "text"
             model["content"] = file_content
             model["mimetype"] = mimetypes.guess_type(path)[0] or "text/plain"
@@ -84,8 +124,12 @@ class MMSContentsManager(ContentsManager):
                 model["content"] = b64decode(content)
         return model
 
-    def save(self, model, path):
-        pass
+    def save(self, model, path): #TODO doesn't work for creating new notebooks or adding new cells yet
+        print('?save ' + path)
+        notebook = add_mms_id(model['content'])
+        print(notebook)
+        save_notebook(self.mms_url, self.mms_project, notebook, self._mms_token)
+        return self.get(path, type='notebook', content=False)
 
     def delete_file(self, path):
         pass
@@ -94,7 +138,8 @@ class MMSContentsManager(ContentsManager):
         pass
 
     def guess_type(self, path):
-        if path == '':
+        print('?guess type ' + path)
+        if path == '' or path == '/':
             return 'directory'
         return 'notebook'
 
@@ -103,6 +148,9 @@ class MMSContentsManager(ContentsManager):
 
     def no_such_entity(self, path):
         self.do_error("No such entity: [{path}]".format(path=path), 404)
+
+    def _checkpoints_class_default(self):
+        return GenericFileCheckpoints
 
 def base_model(path):
     return {
@@ -116,11 +164,24 @@ def base_model(path):
         "mimetype": None,
     }
 
-
 def base_directory_model(path):
     model = base_model(path)
     model.update(
         type="directory",
         last_modified=DUMMY_CREATED_DATE,
-        created=DUMMY_CREATED_DATE,)
+        created=DUMMY_CREATED_DATE,
+        format="json",
+        content=[])
     return model
+
+def move_id_to_metadata(notebook):
+    notebook['metadata']['mms'] = {'id': notebook['id']}
+    for i in notebook['cells']:
+        i['metadata']['mms'] = {'id': i['id']}
+    return notebook
+
+def add_mms_id(notebook):
+    notebook['id'] = notebook['metadata']['mms']['id']
+    for i in notebook['cells']:
+        i['id'] = i['metadata']['mms']['id']
+    return notebook

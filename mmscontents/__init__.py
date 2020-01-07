@@ -1,0 +1,1 @@
+from .mmsmanager import MMSContentsManager
