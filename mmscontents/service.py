@@ -15,6 +15,17 @@ def get_notebooks(url, project, token):
     except ApiException as e:
         print("Exception when calling NotebooksControllerApi->get_all_notebooks: %s\n" % e)
 
+def get_notebook(url, project, id, token):
+    configuration = mms_client.Configuration()
+    configuration.host = url
+    configuration.access_token = token
+    api_instance = mms_client.NotebooksControllerApi(mms_client.ApiClient(configuration))
+    try:
+        api_response = api_instance.get_notebook(project, 'master', id)
+        return api_response.notebooks[0]
+    except ApiException as e:
+        print("Exception when calling NotebooksControllerApi->get_notebook: %s\n" % e)
+
 def save_notebook(url, project, notebook, token):
     configuration = mms_client.Configuration()
     configuration.host = url

@@ -8,7 +8,7 @@ from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
 
 from tornado.web import HTTPError
 
-from mmscontents.service import get_notebooks, save_notebook, get_mms_token
+from mmscontents.service import get_notebooks, get_notebook, save_notebook, get_mms_token
 from traitlets import Unicode
 
 DUMMY_CREATED_DATE = datetime.datetime.fromtimestamp(86400)
@@ -74,13 +74,17 @@ class MMSContentsManager(ContentsManager):
                 self.no_such_entity(path)
         if path == '' or path == '/':
             content = []
-            for i in get_notebooks(self.mms_url, self.mms_project, self._mms_token):
-                nmodel = base_model('/' + i + '.ipynb')
+            for id, n in get_notebooks(self.mms_url, self.mms_project, self._mms_token).items():
+                name = id + '.ipynb'
+                if 'mms' in n['metadata'] and 'name' in n['metadata']['mms']:
+                    name = n['metadata']['mms']['name']
+                nmodel = base_model(name)
                 nmodel.update(
                     type="notebook",
                     format="json",
                     last_modified=DUMMY_CREATED_DATE,
-                    created=DUMMY_CREATED_DATE
+                    created=DUMMY_CREATED_DATE,
+                    path=id + '.ipynb'
                 )
                 content.append(nmodel)
             model.update(content=content)
@@ -88,20 +92,26 @@ class MMSContentsManager(ContentsManager):
 
     def _notebook_model_from_path(self, path, content=False, format=None):
         print('?notebook from path ' + path + ' ' + str(content))
+        if not self.file_exists(path):
+            self.no_such_entity(path)
+
+        id = get_id_from_path(path)
+        notebook = get_notebook(self.mms_url, self.mms_project, id, self._mms_token)
+        name = id + '.ipynb'
+        if 'mms' in notebook['metadata'] and 'name' in notebook['metadata']['mms']:
+            name = notebook['metadata']['mms']['name']
         model = base_model(path)
         model.update(
             last_modified=DUMMY_CREATED_DATE,
             created=DUMMY_CREATED_DATE,
-            type='notebook'
+            type='notebook',
+            name=name
         )
-        if content:
-            if not self.file_exists(path):
-                self.no_such_entity(path)
-            id = path.rsplit('/', 1)[-1].split('.')[0]
+        if content:    
             #file_content = json.dumps(get_notebooks(mms_url, mms_project)[id])
             #nb_content = nb_format.reads(file_content, as_version=nbformat.NO_CONVERT)
             #self.mark_trusted_cells(nb_content, path)
-            nb_content = nbformat.from_dict(move_id_to_metadata(get_notebooks(self.mms_url, self.mms_project, self._mms_token)[id]))
+            nb_content = nbformat.from_dict(move_id_to_metadata(notebook))
             model.update(
                 content=nb_content,
                 format='json'
@@ -129,17 +139,45 @@ class MMSContentsManager(ContentsManager):
         # (name vs id in path, it'll create a new notebook but with different path), 
         # for new cells it'll keep adding new ids since ids doesn't go back to frontend
         # may need frontend extensions to add these ids as they're created
-        print('?save ' + path)
+        print('?save ' + path + ' ' + str(model))
         notebook = add_mms_id(model['content'])
+        notebook['metadata']['mms']['name'] = 'Untitled.ipynb'
         print(notebook)
         save_notebook(self.mms_url, self.mms_project, notebook, self._mms_token)
-        return self.get(path, type='notebook', content=False)
+        ret = base_model(path)
+        ret.update(
+            path=notebook['id'] + '.ipynb',
+            last_modified=DUMMY_CREATED_DATE,
+            created=DUMMY_CREATED_DATE,
+            type='notebook'
+        )
+        return ret
+        #return self.get(path, type='notebook', content=False)
 
     def delete_file(self, path):
         pass
 
     def rename_file(self, old_path, new_path):
-        pass
+        #jupyter is treating name as the path...so this won't work
+        print("?rename " + old_path + " " + new_path)
+        id = get_id_from_path(old_path)
+        notebook = get_notebook(self.mms_url, self.mms_project, id, self._mms_token)
+        new_name = new_path.rsplit('/', 1)[-1]
+        if 'metadata' not in notebook:
+            notebook['metadata'] = {}
+        if 'mms' not in notebook['metadata']:
+            notebook['metadata']['mms'] = {'id': notebook['id']}
+        notebook['metadata']['mms']['name'] = new_name
+        to_save = {'id': notebook['id'], 'metadata': notebook['metadata']}
+        save_notebook(self.mms_url, self.mms_project, to_save, self._mms_token)
+        ret = base_model(old_path)
+        ret.update(
+            name=new_name,
+            last_modified=DUMMY_CREATED_DATE,
+            created=DUMMY_CREATED_DATE,
+            type='notebook'
+        )
+        return ret
 
     def guess_type(self, path):
         print('?guess type ' + path)
@@ -193,3 +231,6 @@ def add_mms_id(notebook):
             i['metadata']['mms'] = {'id': str(uuid.uuid4())}
         i['id'] = i['metadata']['mms']['id']
     return notebook
+
+def get_id_from_path(path):
+    return path.rsplit('/', 1)[-1].split('.')[0]
