@@ -1,6 +1,7 @@
 import datetime
 import mimetypes
 import nbformat
+import uuid
 
 from notebook.services.contents.manager import ContentsManager
 from notebook.services.contents.filecheckpoints import GenericFileCheckpoints
@@ -124,7 +125,10 @@ class MMSContentsManager(ContentsManager):
                 model["content"] = b64decode(content)
         return model
 
-    def save(self, model, path): #TODO doesn't work for creating new notebooks or adding new cells yet
+    def save(self, model, path): #TODO doesn't work for creating new notebooks or cells
+        # (name vs id in path, it'll create a new notebook but with different path), 
+        # for new cells it'll keep adding new ids since ids doesn't go back to frontend
+        # may need frontend extensions to add these ids as they're created
         print('?save ' + path)
         notebook = add_mms_id(model['content'])
         print(notebook)
@@ -181,7 +185,11 @@ def move_id_to_metadata(notebook):
     return notebook
 
 def add_mms_id(notebook):
+    if 'mms' not in notebook['metadata']:
+        notebook['metadata']['mms'] = {'id': str(uuid.uuid4())}
     notebook['id'] = notebook['metadata']['mms']['id']
     for i in notebook['cells']:
+        if 'mms' not in i['metadata']:
+            i['metadata']['mms'] = {'id': str(uuid.uuid4())}
         i['id'] = i['metadata']['mms']['id']
     return notebook
