@@ -40,7 +40,7 @@ class MMSContentsManager(ContentsManager):
         print('?file exists ' + path)
         if path == '' or path == '/':
             return False
-        id = path.rsplit('/', 1)[-1].split('.')[0]
+        id = get_id_from_path(path)
         return id in get_notebooks(self.mms_url, self.mms_project, self._mms_token)
 
     def get(self, path, content=True, type=None, format=None):
@@ -80,10 +80,11 @@ class MMSContentsManager(ContentsManager):
                     name = n['metadata']['mms']['name']
                 nmodel = base_model(name)
                 nmodel.update(
+                    name=name,
                     type="notebook",
                     format="json",
-                    last_modified=DUMMY_CREATED_DATE,
-                    created=DUMMY_CREATED_DATE,
+                    last_modified=string_to_date(n['_modified']),
+                    created=string_to_date(n['_created']),
                     path=id + '.ipynb'
                 )
                 content.append(nmodel)
@@ -102,8 +103,8 @@ class MMSContentsManager(ContentsManager):
             name = notebook['metadata']['mms']['name']
         model = base_model(path)
         model.update(
-            last_modified=DUMMY_CREATED_DATE,
-            created=DUMMY_CREATED_DATE,
+            last_modified=string_to_date(notebook['_modified']),
+            created=string_to_date(notebook['_created']),
             type='notebook',
             name=name
         )
@@ -135,21 +136,22 @@ class MMSContentsManager(ContentsManager):
                 model["content"] = b64decode(content)
         return model
 
-    def save(self, model, path): #TODO doesn't work for creating new notebooks or cells
-        # (name vs id in path, it'll create a new notebook but with different path), 
-        # for new cells it'll keep adding new ids since ids doesn't go back to frontend
+    def save(self, model, path): 
+        # for new cells it'll keep adding new ids and cell elements since ids doesn't go back to frontend
         # may need frontend extensions to add these ids as they're created
         print('?save ' + path + ' ' + str(model))
         notebook = add_mms_id(model['content'])
-        notebook['metadata']['mms']['name'] = 'Untitled.ipynb'
-        print(notebook)
-        save_notebook(self.mms_url, self.mms_project, notebook, self._mms_token)
+        if 'name' not in notebook['metadata']['mms']:
+            notebook['metadata']['mms']['name'] = 'Untitled.ipynb'
+        print('notebook_to_save: ' + str(notebook))
+        notebook = save_notebook(self.mms_url, self.mms_project, notebook, self._mms_token)
         ret = base_model(path)
         ret.update(
             path=notebook['id'] + '.ipynb',
-            last_modified=DUMMY_CREATED_DATE,
-            created=DUMMY_CREATED_DATE,
-            type='notebook'
+            last_modified=string_to_date(notebook['_modified']),
+            created=string_to_date(notebook['_created']),
+            type='notebook',
+            name=notebook['metadata']['mms']['name']
         )
         return ret
         #return self.get(path, type='notebook', content=False)
@@ -169,12 +171,12 @@ class MMSContentsManager(ContentsManager):
             notebook['metadata']['mms'] = {'id': notebook['id']}
         notebook['metadata']['mms']['name'] = new_name
         to_save = {'id': notebook['id'], 'metadata': notebook['metadata']}
-        save_notebook(self.mms_url, self.mms_project, to_save, self._mms_token)
+        notebook = save_notebook(self.mms_url, self.mms_project, to_save, self._mms_token)
         ret = base_model(old_path)
         ret.update(
             name=new_name,
-            last_modified=DUMMY_CREATED_DATE,
-            created=DUMMY_CREATED_DATE,
+            last_modified=string_to_date(notebook['_modified']),
+            created=string_to_date(notebook['_created']),
             type='notebook'
         )
         return ret
@@ -234,3 +236,7 @@ def add_mms_id(notebook):
 
 def get_id_from_path(path):
     return path.rsplit('/', 1)[-1].split('.')[0]
+
+def string_to_date(s):
+    s = s[:-5] + '000' + s[-5:]
+    return datetime.datetime.strptime(s, '%Y-%m-%dT%H:%M:%S.%f%z')

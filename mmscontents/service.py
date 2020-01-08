@@ -35,10 +35,7 @@ def save_notebook(url, project, notebook, token):
         r = mms_client.NotebooksRequest()
         r.notebooks = [notebook]
         api_response = api_instance.create_or_update_notebooks(project, 'master', notebooks_request=r)
-        ret = {}
-        for i in api_response.notebooks:
-            ret[i['id']] = i
-        return ret
+        return api_response.notebooks[0]
     except ApiException as e:
         print("Exception when calling NotebooksControllerApi->create_or_update_notebooks: %s\n" % e)
 
