@@ -1,4 +1,4 @@
-import mms_client
+import mms_python_client as mms_client
 from mms_client.rest import ApiException
 
 def get_notebooks(url, project, token):

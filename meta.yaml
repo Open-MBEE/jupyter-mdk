@@ -11,7 +11,7 @@ source:
 build:
   noarch: python
   number: 0
-  script: "{{ PYTHON }} -m pip install . --no-deps --ignore-installed -vv "
+  script: "{{ PYTHON }} -m pip install . --no-deps -vv "
 
 requirements:
   host:
@@ -22,6 +22,7 @@ requirements:
     - certifi
     - python-dateutil
     - notebook
+    - mms-python-client >=4.0.0a1
   run:
     - python
     - urllib3 >=1.15
@@ -29,13 +30,11 @@ requirements:
     - certifi
     - python-dateutil
     - notebook
+    - mms-python-client >=4.0.0a1
 
 about:
-  home: The package home page
-  license: UNKNOWN
-  license_family: OTHER
-  license_file: ''
-  summary: ''
-  description: ''
-  doc_url: ''
-  dev_url: ''
+  home: http://openmbee.org
+  license: Apache 2.0
+  license_file: LICENSE
+  summary: MMS Jupyter integration
+  description: Uses MMS as a backend for storing notebooks
