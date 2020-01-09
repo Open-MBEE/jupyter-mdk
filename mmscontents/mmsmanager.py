@@ -219,7 +219,9 @@ def base_directory_model(path):
     return model
 
 def move_id_to_metadata(notebook):
-    notebook['metadata']['mms'] = {'id': notebook['id']}
+    if 'mms' not in notebook['metadata']:
+        notebook['metadata']['mms'] = {}
+    notebook['metadata']['mms']['id']: notebook['id']
     for i in notebook['cells']:
         i['metadata']['mms'] = {'id': i['id']}
     return notebook
