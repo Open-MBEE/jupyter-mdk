@@ -43,8 +43,8 @@ def get_mms_token(url, username, password):
     configuration = mms_client.Configuration()
     configuration.host = url
     jwt_authentication_request = mms_client.JwtAuthenticationRequest()
-    jwt_authentication_request.username = 'admin'
-    jwt_authentication_request.password = 'admin'
+    jwt_authentication_request.username = username
+    jwt_authentication_request.password = password
     try:
         api_instance = mms_client.AuthenticationControllerApi(mms_client.ApiClient(configuration))
         api_response = api_instance.create_authentication_token(jwt_authentication_request=jwt_authentication_request)
