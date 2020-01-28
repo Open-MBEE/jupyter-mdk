@@ -121,19 +121,11 @@ class MMSContentsManager(ContentsManager):
         return model
 
     def _file_model_from_path(self, path, content=False, format=None):
-        model = base_model(path)
+        print('?file from path ' + path + ' ' + str(content) + ' ' + str(format))
+        model = self._notebook_model_from_path(path, content, format)
         model['type'] = 'file'
         if content:
-            if not self.file_exists(path):
-                self.no_such_entity(path)
-            file_content = get_notebooks(self.mms_url, self.mms_project, self._mms_token)[path]
-            model["format"] = format or "text"
-            model["content"] = file_content
-            model["mimetype"] = mimetypes.guess_type(path)[0] or "text/plain"
-            if format == "base64":
-                model["format"] = format or "base64"
-                from base64 import b64decode
-                model["content"] = b64decode(content)
+            model["mimetype"] = "application/json"
         return model
 
     def save(self, model, path): 
