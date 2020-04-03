@@ -1,0 +1,40 @@
+{% set name = "jupyter-mdk" %}
+{% set version = "0.1.1" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+source:
+  path: ./
+  # url: https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz
+  # sha256: 6855d99218ed7e219e37d6cb6628443ac3abeb1921c16e0f778b1aee3e625290
+build:
+  noarch: python
+  number: 0
+  script: "{{ PYTHON }} -m pip install . --no-deps -vv "
+
+requirements:
+  host:
+    - python
+    - pip
+    - urllib3 >=1.15
+    - six >=1.10
+    - certifi
+    - python-dateutil
+    - notebook
+    - mms-python-client >=4.0.0a1
+  run:
+    - python
+    - urllib3 >=1.15
+    - six >=1.10
+    - certifi
+    - python-dateutil
+    - notebook
+    - mms-python-client >=4.0.0a1
+
+about:
+  home: http://openmbee.org
+  license: Apache 2.0
+  license_file: LICENSE
+  summary: Jupyter Model Development Kit
+  description: Uses MMS as a backend for storing notebooks
