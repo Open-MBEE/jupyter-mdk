@@ -13,7 +13,7 @@ It’s the vision that by utilising MMS’s element based storage and versioning
 *   [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/index.html) or [Jupyter Notebook](https://jupyter.readthedocs.io/en/latest/index.html)
     * Will be automatically installed below if not already available.
 *   [pip](https://pip.pypa.io/en/stable/)
-*   [Model Management System (MMS)](https://github.com/Open-MBEE/mms)
+*   [Model Management System (MMS) 4](https://github.com/Open-MBEE/mms)
 
 ## Installation
 
