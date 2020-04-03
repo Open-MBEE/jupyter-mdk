@@ -1,30 +1,26 @@
 # coding: utf-8
 
-from setuptools import setup, find_packages  # noqa: H301
-from os.path import join, dirname, abspath
+import os
+from setuptools import setup
 
-NAME = "mmscontents"
-VERSION = "0.0.1"
+NAME = 'jupyter-mdk'
+VERSION = '0.1.1'
 
-def read_requirements(basename):
-    reqs_file = join(dirname(abspath(__file__)), basename)
-    with open(reqs_file) as f:
-        return [req.strip() for req in f.readlines()]
-
-REQUIRES = read_requirements('requirements.txt')
+def read(fname):
+    with open(os.path.join(os.path.dirname(__file__), fname)) as f:
+        return f.read()
 
 setup(
     name=NAME,
     version=VERSION,
-    description="MMS ContentsManager for Jupyter",
-    author_email="",
-    url="https://github.com/Open-MBEE/mmscontents",
-    keywords=["MMS", "Jupyter"],
-    install_requires=REQUIRES,
-    packages=find_packages(exclude=["test", "tests"]),
+    description='Jupyter Model Development Kit',
+    author_email='',
+    url='https://github.com/Open-MBEE/jupyter-mdk',
+    keywords=['MDK', 'Jupyter', 'MMS'],
+    install_requires=read('requirements.txt').strip().split('\n'),
+    packages=['mmscontents'],
     include_package_data=True,
-    license="Apache 2.0",
-    long_description="""\
-    
-    """
+    license='Apache 2.0',
+    long_description=read('README.md'),
+    long_description_content_type='text/markdown'
 )

@@ -1,0 +1,7 @@
+recursive-include mmscontents *.py
+
+include requirements.txt
+include README.md
+include LICENSE
+include MANIFEST.in
+

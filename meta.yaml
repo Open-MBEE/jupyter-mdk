@@ -1,5 +1,5 @@
-{% set name = "mmscontents" %}
-{% set version = "0.0.1" %}
+{% set name = "jupyter-mdk" %}
+{% set version = "0.1.1" %}
 
 package:
   name: "{{ name|lower }}"
@@ -36,5 +36,5 @@ about:
   home: http://openmbee.org
   license: Apache 2.0
   license_file: LICENSE
-  summary: MMS Jupyter integration
+  summary: Jupyter Model Development Kit
   description: Uses MMS as a backend for storing notebooks
