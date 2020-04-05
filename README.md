@@ -1,6 +1,6 @@
 # Jupyter Model Development Kit (MDK)
 
-[![Download](https://img.shields.io/pypi/v/jupyter-mdk)](https://pypi.org/project/jupyter-mdk/)
+[![Download](https://img.shields.io/pypi/v/jupyter-mdk)](https://pypi.org/project/jupyter-mdk/) [![Jira](https://img.shields.io/badge/issues-jira-blue)](https://openmbee.atlassian.net/browse/JMDK)
 
 The Jupyter MDK will allow a dramatic expansion of the capabilities of interactive View creation, by allowing seamless integration with the [MMS](https://github.com/Open-MBEE/mms) along with leveraging collaborative Jupyter sessions.
 
