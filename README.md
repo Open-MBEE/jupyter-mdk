@@ -39,3 +39,7 @@ It’s the vision that by utilising MMS’s element based storage and versioning
 4.  Run Jupyter as you normally would, e.g. `jupyter notebook`
 
 5.  Test installation by creating a new notebook and saving. The notebook should *not* be in the local filesystem but instead accessible via MMS's REST API, e.g. `https://mms.yourcompany.com/projects/<project_id>/refs/master/notebooks`, to any user who has been granted access to the project both through MMS and Jupyter clients with Jupyter MDK similarly configured.
+
+# Contributing
+
+To learn how you can get involved in a variety of ways, please see [Contibuting to OpenMBEE](https://www.openmbee.org/contribute).
