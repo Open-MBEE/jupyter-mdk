@@ -38,8 +38,9 @@ class MMSContentsManager(ContentsManager):
         if realpath == '':
             return True
         paths = realpath.split('/')
-        if (len(paths) > 2) or (len(paths) < 2 and paths[0] not in self._mms_orgs) or \
-                (len(paths) == 2 and paths[1] not in self._mms_projects):
+        if (len(paths) > 3) or (len(paths) >= 1 and paths[0] not in self._mms_orgs) or \
+                (len(paths) >= 2 and paths[1] not in self._mms_projects) or \
+                (len(paths) == 3 and paths[2] not in service.get_refs(self.mms_url, paths[1], self._mms_token)):
             return False
         return True
 
@@ -49,10 +50,10 @@ class MMSContentsManager(ContentsManager):
     def file_exists(self, path=''):
         print('?file exists ' + path)
         realpath = get_normalized_path(path)
-        if len(realpath.split('/')) <= 2:
+        if len(realpath.split('/')) <= 3:
             return False
         ids = get_ids_from_path(realpath)
-        return ids[2] in service.get_notebooks(self.mms_url, ids[1], self._mms_token)
+        return ids[3] in service.get_notebooks(self.mms_url, ids[1], ids[2], self._mms_token)
 
     def get(self, path, content=True, type=None, format=None):
         print('?get ' + path + ' ' + str(content) + ' ' + str(type) + ' ' + str(format))
@@ -86,15 +87,22 @@ class MMSContentsManager(ContentsManager):
                     contents.append(directory_model(proj.name, '/' + ids[0] + '/' + id, proj, None))
             org = self._mms_orgs[ids[0]]
             model = directory_model(org.name, '/' + ids[0], org, contents)
-        elif len(ids) == 2: #notebooks under a project
+        elif len(ids) == 2: #refs under a project
             contents = []
-            for id, n in service.get_notebooks(self.mms_url, ids[1], self._mms_token).items():
+            for id, ref in service.get_refs(self.mms_url, ids[1], self._mms_token).items():
+                contents.append(directory_model(ref.name, '/' + ids[0] + '/' + ids[1] + '/' + id, ref, None))
+            project = self._mms_projects[ids[1]]
+            model = directory_model(project.name, '/' + ids[0] + '/' + ids[1], project, contents)
+        elif len(ids) == 3: #notebooks under a ref
+            contents = []
+            for id, n in service.get_notebooks(self.mms_url, ids[1], ids[2], self._mms_token).items():
                 name = id + '.ipynb'
                 if 'mms' in n['metadata'] and 'name' in n['metadata']['mms']:
                     name = n['metadata']['mms']['name']
-                contents.append(notebook_model(name, '/' + ids[0] + '/' + ids[1] + '/' + id + '.ipynb', n, None))
-            proj = self._mms_projects[ids[1]]
-            model = directory_model(proj.name, '/' + ids[0] + '/' + ids[1], proj, contents)
+                contents.append(notebook_model(name, '/' + ids[0] + '/' + ids[1] + '/' + ids[2] + '/' + id + '.ipynb', n, None))
+            refs = service.get_refs(self.mms_url, ids[1], self._mms_token)
+            ref = refs[ids[2]]
+            model = directory_model(ref.name, '/' + ids[0] + '/' + ids[1] + '/' + ids[2], ref, contents)
         return model
 
     def _notebook_model_from_path(self, path, content=False, format=None):
@@ -103,11 +111,11 @@ class MMSContentsManager(ContentsManager):
             self._no_such_entity(path)
 
         ids = get_ids_from_path(path)
-        notebook = service.get_notebooks(self.mms_url, ids[1], self._mms_token)[ids[2]] #worksaround for get_notebook not working
-        name = ids[2] + '.ipynb'
+        notebook = service.get_notebooks(self.mms_url, ids[1], ids[2], self._mms_token)[ids[3]] #worksaround for get_notebook not working
+        name = ids[3] + '.ipynb'
         if 'mms' in notebook['metadata'] and 'name' in notebook['metadata']['mms']:
             name = notebook['metadata']['mms']['name']
-        model = notebook_model(name, '/' + ids[0] + '/' + ids[1] + '/' + ids[2] + '.ipynb', notebook, None)
+        model = notebook_model(name, '/' + ids[0] + '/' + ids[1] + '/' + ids[2] + '/' + ids[3] + '.ipynb', notebook, None)
         if content:    
             #file_content = json.dumps(get_notebooks(mms_url, mms_project)[id])
             #nb_content = nb_format.reads(file_content, as_version=nbformat.NO_CONVERT)
@@ -134,18 +142,18 @@ class MMSContentsManager(ContentsManager):
         print('?save ' + path + ' ' + str(model))
         realpath = get_normalized_path(path)
         ids = get_ids_from_path(realpath)
-        if len(ids) <= 2:
+        if len(ids) <= 3:
             self._do_error("cannot create here", 400)
         if model['type'] != 'notebook':
             self._do_error("cannot create non notebooks", 400)
-        notebook = add_mms_id(model['content'], ids[2])
+        notebook = add_mms_id(model['content'], ids[3])
         if 'name' not in notebook['metadata']['mms']:
             notebook['metadata']['mms']['name'] = 'Untitled.ipynb'
         print('notebook_to_save: ' + str(notebook))
-        notebook = service.save_notebook(self.mms_url, ids[1], notebook, self._mms_token)
+        notebook = service.save_notebook(self.mms_url, ids[1], ids[2], notebook, self._mms_token)
         ret = {
             "name": notebook['metadata']['mms']['name'],
-            "path": '/' + ids[0] + '/' + ids[1] + '/' + notebook['id'] + '.ipynb',
+            "path": '/' + ids[0] + '/' + ids[1] + '/' + ids[2] + '/' + notebook['id'] + '.ipynb',
             "writable": True,
             "last_modified": string_to_date(notebook['_modified']),
             "created": string_to_date(notebook['_created']),
@@ -167,12 +175,12 @@ class MMSContentsManager(ContentsManager):
         real_new_path = get_normalized_path(new_path)
         old_ids = get_ids_from_path(real_old_path)
         new_ids = get_ids_from_path(real_new_path)
-        if len(old_ids) != 3 or len(new_ids) != 3:
+        if len(old_ids) != 4 or len(new_ids) != 4:
             self._do_error('cannot rename non notebooks', 400)
-        old_name = old_ids[2] + '.ipynb'
-        new_name = new_ids[2] + '.ipynb'
+        old_name = old_ids[3] + '.ipynb'
+        new_name = new_ids[3] + '.ipynb'
 
-        notebooks = service.get_notebooks(self.mms_url, old_ids[1], self._mms_token)
+        notebooks = service.get_notebooks(self.mms_url, old_ids[1], old_ids[2], self._mms_token)
         #find notebook with the old name....
         notebook = None
         for id, n in notebooks.items():
@@ -188,13 +196,13 @@ class MMSContentsManager(ContentsManager):
         notebook['metadata']['mms']['id'] = notebook['id']
 
         to_save = {'id': notebook['id'], 'metadata': notebook['metadata']}
-        notebook = service.save_element(self.mms_url, old_ids[1], to_save, self._mms_token)
-        ret = notebook_model(new_name, '/' + old_ids[0] + '/' + old_ids[1] + '/' + notebook['id'] + '.ipynb', notebook, None)
+        notebook = service.save_element(self.mms_url, old_ids[1], old_ids[2], to_save, self._mms_token)
+        ret = notebook_model(new_name, '/' + old_ids[0] + '/' + old_ids[1] + '/' + old_ids[2] + '/' + notebook['id'] + '.ipynb', notebook, None)
         #return ret
 
     def _guess_type(self, path):
         print('?guess type ' + path)
-        if len(path.split('/')) <= 2:
+        if len(path.split('/')) <= 3:
             return 'directory'
         return 'notebook'
 
@@ -230,8 +238,8 @@ def add_mms_id(notebook, namepath=None):
 
 def get_ids_from_path(path):
     paths = path.split('/')
-    if len(paths) > 2:
-        paths[2] = paths[2].rsplit('.', 1)[0]
+    if len(paths) > 3:
+        paths[3] = paths[3].rsplit('.', 1)[0]
     return paths
 
 def string_to_date(s):
@@ -243,7 +251,7 @@ def string_to_date(s):
 def get_normalized_path(path):
     return path.strip('/')
 
-def directory_model(name, path, ob, contents):
+def base_model(name, path, type, contents):
     model = {
         "name": name,
         "path": path,
@@ -253,34 +261,26 @@ def directory_model(name, path, ob, contents):
         "content": contents,
         "format": 'json',
         "mimetype": None,
-        'type': 'directory'
+        'type': type
     }
+    if contents is None:
+        model['format'] = None
+    return model
+
+def directory_model(name, path, ob, contents):
+    model = base_model(name, path, 'directory', contents)
     if ob is not None:
         model.update(
             last_modified = string_to_date(ob.modified),
             created = string_to_date(ob.created)
         )
-    if contents is None:
-        model['format'] = None
     return model
 
 def notebook_model(name, path, ob, contents):
-    model = {
-        "name": name,
-        "path": path,
-        "writable": True,
-        "last_modified": DUMMY_CREATED_DATE,
-        "created": DUMMY_CREATED_DATE,
-        "content": contents,
-        "format": 'json',
-        "mimetype": None,
-        'type': 'notebook'
-    }
+    model = base_model(name, path, 'notebook', contents)
     if ob is not None:
         model.update(
             last_modified = string_to_date(ob['_modified']),
             created = string_to_date(ob['_created'])
         )
-    if contents is None:
-        model['format'] = None
     return model
