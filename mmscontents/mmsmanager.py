@@ -214,7 +214,7 @@ class MMSContentsManager(ContentsManager):
 
     @default('checkpoints_class')
     def _default_checkpoints_class(self):
-        return GenericFileCheckpoints #NoOpCheckpoints
+        return NoOpCheckpoints #GenericFileCheckpoints #NoOpCheckpoints
 
 def move_id_to_metadata(notebook):
     if 'mms' not in notebook['metadata']:
