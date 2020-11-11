@@ -14,6 +14,7 @@ It’s the vision that by utilising MMS’s element based storage and versioning
     * Will be automatically installed below if not already available.
 *   [pip](https://pip.pypa.io/en/stable/)
 *   [Model Management System (MMS) 4](https://github.com/Open-MBEE/mms)
+    * **Not** backwards compatible with MMS 3
 
 ## Installation
 
